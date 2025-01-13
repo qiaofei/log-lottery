@@ -129,20 +129,22 @@ const init = () => {
         let element = document.createElement('div');
         element.className = 'element-card';
 
+
         const number = document.createElement('div');
         number.className = 'card-id';
         number.textContent = tableData.value[i].uid;
         element.appendChild(number);
 
-        const symbol = document.createElement('div');
-        symbol.className = 'card-name';
-        symbol.textContent = tableData.value[i].name;
-        element.appendChild(symbol);
+        // const symbol = document.createElement('div');
+        // symbol.className = 'card-name';
+        // symbol.textContent = tableData.value[i].name;
+        // element.appendChild(symbol);
 
-        const detail = document.createElement('div');
-        detail.className = 'card-detail';
-        detail.innerHTML = `${tableData.value[i].department}<br/>${tableData.value[i].identity}`;
-        element.appendChild(detail);
+
+        // const detail = document.createElement('div');
+        // detail.className = 'card-detail';
+        // detail.innerHTML = `${tableData.value[i].department}<br/>${tableData.value[i].identity}`;
+        // element.appendChild(detail);
 
         element = useElementStyle(element, tableData.value[i], i, patternList.value, patternColor.value, cardColor.value, cardSize.value, textSize.value)
         const object = new CSS3DObject(element);
@@ -393,48 +395,49 @@ const startLottery = () => {
             position: 'top-right',
             duration: 10000
         })
-
         return
     }
     personPool.value = currentPrize.value.isAll ? notThisPrizePersonList.value : notPersonList.value
     // 验证抽奖人数是否还够
-    if (personPool.value.length < currentPrize.value.count - currentPrize.value.isUsedCount) {
+    if (personPool.value.length < 1) {
         toast.open({
             message: '抽奖人数不够',
             type: 'warning',
             position: 'top-right',
             duration: 10000
         })
-
         return;
     }
-    luckyCount.value = 10
-    // 自定义抽奖个数
 
-    let leftover = currentPrize.value.count - currentPrize.value.isUsedCount
-    const customCount = currentPrize.value.separateCount
-    if (customCount && customCount.enable && customCount.countList.length > 0) {
-        for (let i = 0; i < customCount.countList.length; i++) {
-            if (customCount.countList[i].isUsedCount < customCount.countList[i].count) {
-                leftover = customCount.countList[i].count - customCount.countList[i].isUsedCount
-                break;
-            }
-        }
-    }
-    leftover < luckyCount.value ? luckyCount.value = leftover : luckyCount
-    for (let i = 0; i < luckyCount.value; i++) {
-        if (personPool.value.length > 0) {
-            const randomIndex = Math.round(Math.random() * (personPool.value.length - 1))
-            luckyTargets.value.push(personPool.value[randomIndex])
-            personPool.value.splice(randomIndex, 1)
-        }
-    }
+    // 每次只抽取一个人
+    luckyCount.value = 1
+
+    // 随机抽取一个人
+    const randomIndex = Math.round(Math.random() * (personPool.value.length - 1))
+    luckyTargets.value = [personPool.value[randomIndex]]
+    personPool.value.splice(randomIndex, 1)
+
     toast.open({
-        message: `现在抽取${currentPrize.value.name} ${leftover}人`,
+        message: `现在抽取${currentPrize.value.name}`,
         type: 'default',
         position: 'top-right',
         duration: 8000
     })
+
+    // 将所有卡片的 card-id 设置为透明
+    objects.value.forEach(item => {
+        const cardId = item.element.querySelector('.card-id')
+        if (cardId) {
+            new TWEEN.Tween({ opacity: 1 })
+                .to({ opacity: 0 }, 500)
+                .easing(TWEEN.Easing.Exponential.InOut)
+                .onUpdate((obj) => {
+                    cardId.style.opacity = obj.opacity
+                })
+                .start()
+        }
+    })
+
     currentStatus.value = 2
     rollBall(10, 3000)
 }
@@ -452,34 +455,52 @@ const stopLottery = async () => {
     luckyTargets.value.forEach((person: IPersonConfig, index: number) => {
         let cardIndex = selectCard(luckyCardList.value, tableData.value.length, person.id)
         luckyCardList.value.push(cardIndex)
-        const totalLuckyCount=luckyTargets.value.length
+        const totalLuckyCount = luckyTargets.value.length
         let item = objects.value[cardIndex]
-        const { xTable, yTable } = useElementPosition(item, rowCount.value,totalLuckyCount, { width: cardSize.value.width * 2, height: cardSize.value.height * 2 }, windowSize, index)
+        const { xTable, yTable } = useElementPosition(item, rowCount.value, totalLuckyCount, { width: cardSize.value.width * 4, height: cardSize.value.height * 4 }, windowSize, index)
+        const cardId = item.element.querySelector('.card-id')
+        cardId.style.opacity = 0
+        // Position tween
         new TWEEN.Tween(item.position)
             .to({
                 x: xTable,
                 y: yTable,
-                z: 1000
+                z: 1000,
             }, 1200)
             .easing(TWEEN.Easing.Exponential.InOut)
             .onStart(() => {
-                item.element = useElementStyle(item.element, person, cardIndex, patternList.value, patternColor.value, luckyColor.value, { width: cardSize.value.width * 2, height: cardSize.value.height * 2 }, textSize.value * 2, 'lucky')
+                item.element = useElementStyle(item.element, person, cardIndex, patternList.value, patternColor.value, luckyColor.value, { width: cardSize.value.width * 4, height: cardSize.value.height * 4 }, textSize.value * 4, 'lucky')
             })
-            .start()
             .onComplete(() => {
+                // 中奖卡片位置调整完成后,开始恢复 card-id 的透明度
+                const cardId = item.element.querySelector('.card-id')
+                if (cardId) {
+                    new TWEEN.Tween({ opacity: 0 })
+                        .to({ opacity: 1 }, 3000)
+                        .easing(TWEEN.Easing.Exponential.InOut)
+                        .onUpdate((obj) => {
+                            cardId.style.opacity = obj.opacity
+                        })
+                        .start()
+                        .onComplete(() => {
+                            confettiFire()
+                        })
+                }
                 canOperate.value = true
                 currentStatus.value = 3
             })
+            .start()
+
+        // Rotation tween
         new TWEEN.Tween(item.rotation)
             .to({
                 x: 0,
                 y: 0,
-                z: 0
+                z: 0,
             }, 900)
             .easing(TWEEN.Easing.Exponential.InOut)
             .start()
             .onComplete(() => {
-                confettiFire()
                 resetCamera()
             })
     })
@@ -494,22 +515,23 @@ const continueLottery = async () => {
     if (customCount && customCount.enable && customCount.countList.length > 0) {
         for (let i = 0; i < customCount.countList.length; i++) {
             if (customCount.countList[i].isUsedCount < customCount.countList[i].count) {
-                customCount.countList[i].isUsedCount += luckyCount.value
+                customCount.countList[i].isUsedCount += 1 // 每次只加1
                 break;
             }
         }
     }
-    currentPrize.value.isUsedCount += luckyCount.value
-    luckyCount.value = 0
+    currentPrize.value.isUsedCount += 1 // 每次只加1
     if (currentPrize.value.isUsedCount >= currentPrize.value.count) {
         currentPrize.value.isUsed = true
         currentPrize.value.isUsedCount = currentPrize.value.count
     }
     personConfig.addAlreadyPersonList(luckyTargets.value, currentPrize.value)
     prizeConfig.updatePrizeConfig(currentPrize.value)
+    resetCardIdOpacity()
     await enterLottery()
 }
 const quitLottery = () => {
+    resetCardIdOpacity()
     enterLottery()
     currentStatus.value = 0
 }
@@ -625,6 +647,23 @@ const listenKeyboard = () => {
         }
     })
 }
+
+// 在继续抽奖或退出时恢复所有卡片的 card-id 透明度
+const resetCardIdOpacity = () => {
+    objects.value.forEach(item => {
+        const cardId = item.element.querySelector('.card-id')
+        if (cardId) {
+            new TWEEN.Tween({ opacity: 0 })
+                .to({ opacity: 1 }, 500)
+                .easing(TWEEN.Easing.Exponential.InOut)
+                .onUpdate((obj) => {
+                    cardId.style.opacity = obj.opacity
+                })
+                .start()
+        }
+    })
+}
+
 onMounted(() => {
     initTableData();
     init();

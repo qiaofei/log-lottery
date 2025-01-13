@@ -4,16 +4,16 @@
     user-select: none;
     .card-id {
         position: absolute;
-        top: 20px;
+        top: 40px;
         right: 20px;
+        font-weight: bold;
     }
 
     .card-name {
         position: absolute;
-        top: 40px;
+        top: 10px;
         left: 0px;
         right: 0;
-        font-weight: bold;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -37,8 +37,9 @@
 
     .card-id {
         position: absolute;
-        top: 20px;
-        right: 20px;
+        top: 160px;
+        right: 70px;
+        font-size: 40px;
     }
 
     .card-name {
